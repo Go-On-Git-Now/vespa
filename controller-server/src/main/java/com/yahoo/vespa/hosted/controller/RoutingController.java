@@ -16,7 +16,6 @@ import com.yahoo.vespa.hosted.controller.api.integration.dns.Record;
 import com.yahoo.vespa.hosted.controller.api.integration.dns.RecordData;
 import com.yahoo.vespa.hosted.controller.api.integration.dns.RecordName;
 import com.yahoo.vespa.hosted.controller.application.Endpoint;
-import com.yahoo.vespa.hosted.controller.application.Endpoint.Port;
 import com.yahoo.vespa.hosted.controller.application.EndpointList;
 import com.yahoo.vespa.hosted.controller.dns.NameServiceQueue.Priority;
 import com.yahoo.vespa.hosted.controller.rotation.RotationLock;
@@ -74,19 +73,9 @@ public class RoutingController {
     /** Returns zone-scoped endpoints for given deployment */
     public EndpointList endpointsOf(DeploymentId deployment) {
         var endpoints = new LinkedHashSet<Endpoint>();
-        // TODO(mpolden): Remove this once all applications have deployed once and config server passes correct cluster
-        //                id for combined cluster type
-        controller.serviceRegistry().routingGenerator().clusterEndpoints(deployment)
-                  .forEach((cluster, url) -> endpoints.add(Endpoint.of(deployment.applicationId())
-                                                                   .target(cluster, deployment.zoneId())
-                                                                   .routingMethod(RoutingMethod.shared)
-                                                                   .on(Port.fromRoutingMethod(RoutingMethod.shared))
-                                                                   .in(controller.system())));
-        boolean hasSharedEndpoint = !endpoints.isEmpty();
         for (var policy : routingPolicies.get(deployment).values()) {
             if (!policy.status().isActive()) continue;
             for (var routingMethod :  controller.zoneRegistry().routingMethods(policy.id().zone())) {
-                if (hasSharedEndpoint && routingMethod == RoutingMethod.shared) continue;
                 endpoints.add(policy.endpointIn(controller.system(), routingMethod));
             }
         }
